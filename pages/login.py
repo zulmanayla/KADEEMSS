@@ -41,7 +41,7 @@ if st.button("Login"):
             st.session_state.user_email = email_clean
 
             st.success("Login berhasil!")
-            st.switch_page("pages\\dashboards kdm.py")
+            st.switch_page("pages/dashboards kdm.py")
         else:
             st.error("Passcode salah!")
     else:
@@ -50,4 +50,5 @@ if st.button("Login"):
 
 st.write("---")
 st.write("Pastikan email dan passcode sesuai data di *pj.csv*")
+
 
