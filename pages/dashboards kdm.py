@@ -19,7 +19,8 @@ FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 #                GOOGLE CREDENTIALS & GSPREAD
 # ===========================================================
 def get_credentials(scopes):
-    cred = st.secrets["GOOGLE_CREDENTIALS"]
+    # HARUS lowercase, sama seperti di secrets TOML
+    cred = st.secrets["google_credentials"]
 
     service_account_info = {
         "type": cred["type"],
