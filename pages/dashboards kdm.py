@@ -15,15 +15,29 @@ from urllib3.util.retry import Retry
 FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
 
-# ===========================================================
-#                 GOOGLE AUTH VIA STREAMLIT SECRETS
-# ===========================================================
-def get_credentials(scopes):
-    """Membuat credentials dari st.secrets."""
-    cred_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-    creds = Credentials.from_service_account_info(cred_dict, scopes=scopes)
-    return creds
+import json
+import gspread
+from google.oauth2.service_account import Credentials
+import streamlit as st
 
+def get_credentials(scopes):
+    cred = st.secrets["GOOGLE_CREDENTIALS"]
+
+    service_account_info = {
+        "type": cred["type"],
+        "project_id": cred["project_id"],
+        "private_key_id": cred["private_key_id"],
+        "private_key": cred["private_key"],
+        "client_email": cred["client_email"],
+        "client_id": cred["client_id"],
+        "auth_uri": cred["auth_uri"],
+        "token_uri": cred["token_uri"],
+        "auth_provider_x509_cert_url": cred["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": cred["client_x509_cert_url"],
+        "universe_domain": cred["universe_domain"]
+    }
+
+    return Credentials.from_service_account_info(service_account_info, scopes=scopes)
 
 def create_gspread_client():
     scopes = [
@@ -31,31 +45,13 @@ def create_gspread_client():
         "https://www.googleapis.com/auth/drive"
     ]
     creds = get_credentials(scopes)
-    client = gspread.Client(auth=creds)
-
-    retry = Retry(total=5, connect=5, read=5, backoff_factor=1)
-    adapter = HTTPAdapter(max_retries=retry)
-    client.session.mount("https://", adapter)
-
-    return client
-
-
-def init_drive():
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    creds = get_credentials(scopes)
-    return build("drive", "v3", credentials=creds)
-
-
-# ===========================================================
-#                 LOAD SHEETS via SECRETS
-# ===========================================================
+    return gspread.authorize(creds)
 
 @st.cache_resource
 def load_sheet():
     client = create_gspread_client()
     sheet = client.open("PJ Kecamatan").worksheet("Sheet1")
     return sheet
-
 
 # ===========================================================
 #            LOAD & SAVE fenomena.json di Google Drive
