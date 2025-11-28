@@ -28,10 +28,12 @@ def create_client(creds):
 FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"   
 
 def init_drive():
-    creds = Credentials.from_service_account_file(
-        "google_cred.json",
-        scopes=["https://www.googleapis.com/auth/drive"]
-    )
+    cred_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+    creds = Credentials.from_service_account_info(
+    cred_dict,
+    scopes=["https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets"]
+)
     return build("drive", "v3", credentials=creds)
 
 
