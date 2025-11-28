@@ -29,17 +29,20 @@ FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
 @st.cache_resource
 def load_sheet():
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    
     cred_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(cred_dict, scope)
+
+    creds = Credentials.from_service_account_info(
+        cred_dict,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+    )
 
     client = create_client(creds)
     sheet = client.open("PJ Kecamatan").worksheet("Sheet1")
     return sheet
+
 
 
 def get_file_id(name):
