@@ -29,7 +29,7 @@ FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
 def init_drive():
     creds = Credentials.from_service_account_file(
-        "D:\\Naya Geming\\LOL\\google_cred.json",
+        "google_cred.json",
         scopes=["https://www.googleapis.com/auth/drive"]
     )
     return build("drive", "v3", credentials=creds)
@@ -130,7 +130,7 @@ st.markdown(
 )
 
 # LOGIN
-df_login = pd.read_csv("D:\\Naya Geming\\LOL\\pj.csv")
+df_login = pd.read_csv("pj.csv")
 df_login['email'] = df_login['email'].str.strip().str.lower()
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -160,7 +160,7 @@ def load_sheet():
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("D:\\Naya Geming\\LOL\\google_cred.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name("google_cred.json", scope)
     client = create_client(creds)    
     sheet = client.open("PJ Kecamatan").worksheet("Sheet1")
     return sheet
