@@ -110,7 +110,7 @@ prompt_toolkit==3.0.51
 proto-plus==1.26.1
 protobuf==6.33.0
 psutil==7.0.0
-psycopg2==2.9.10
+psycopg2-binary
 pure_eval==0.2.3
 pyarrow==21.0.0
 pyasn1==0.6.1
@@ -164,4 +164,5 @@ vine==5.1.0
 watchdog==6.0.0
 wcwidth==0.2.13
 Werkzeug==3.1.3
+
 
