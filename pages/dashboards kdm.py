@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 import gspread
+import json
+import io
+
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
-import json
-import io
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+
 
 # ===========================================================
 #                  FOLDER GOOGLE DRIVE
@@ -15,11 +15,9 @@ from urllib3.util.retry import Retry
 FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
 
-import json
-import gspread
-from google.oauth2.service_account import Credentials
-import streamlit as st
-
+# ===========================================================
+#                GOOGLE CREDENTIALS & GSPREAD
+# ===========================================================
 def get_credentials(scopes):
     cred = st.secrets["GOOGLE_CREDENTIALS"]
 
@@ -34,24 +32,36 @@ def get_credentials(scopes):
         "token_uri": cred["token_uri"],
         "auth_provider_x509_cert_url": cred["auth_provider_x509_cert_url"],
         "client_x509_cert_url": cred["client_x509_cert_url"],
-        "universe_domain": cred["universe_domain"]
+        "universe_domain": cred["universe_domain"],
     }
 
     return Credentials.from_service_account_info(service_account_info, scopes=scopes)
 
+
 def create_gspread_client():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
+        "https://www.googleapis.com/auth/drive",
     ]
     creds = get_credentials(scopes)
     return gspread.authorize(creds)
 
+
 @st.cache_resource
 def load_sheet():
     client = create_gspread_client()
-    sheet = client.open("PJ Kecamatan").worksheet("Sheet1")
+    sheet = client.open("PJ Kecamatan").worksheet("Sheet1")   # <-- PAKAI Sheet1 DEFAULT
     return sheet
+
+
+# ===========================================================
+#                GOOGLE DRIVE API INIT
+# ===========================================================
+def init_drive():
+    scopes = ["https://www.googleapis.com/auth/drive"]
+    creds = get_credentials(scopes)
+    return build("drive", "v3", credentials=creds)
+
 
 # ===========================================================
 #            LOAD & SAVE fenomena.json di Google Drive
@@ -95,31 +105,31 @@ def save_fenomena_json(data):
     if file_id:
         drive.files().update(fileId=file_id, media_body=media).execute()
     else:
-        metadata = {
+        meta = {
             "name": "fenomena.json",
             "parents": [FOLDER_ID],
-            "mimeType": "application/json"
+            "mimeType": "application/json",
         }
-        drive.files().create(body=metadata, media_body=media).execute()
+        drive.files().create(body=meta, media_body=media).execute()
 
 
 # ===========================================================
-#                 STREAMLIT PAGE CONFIG & HEADER
+#                 STREAMLIT CONFIG & HEADER
 # ===========================================================
 st.set_page_config(
     page_title="Dashboard",
     page_icon="https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75",
-    layout="wide"
+    layout="wide",
 )
 
 logo_url = "https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75"
+
 st.markdown(
     f"""
     <style>
     [data-testid="stHeader"] {{ background: transparent !important; }}
     [data-testid="stToolbar"]::before {{
         content: "";
-        display: flex;
         position: absolute;
         left: 50px;
         top: 13px;
@@ -142,12 +152,12 @@ st.markdown(
     }}
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
 # ===========================================================
-#                 LOGIN VALIDATION
+#                     LOGIN VALIDATION
 # ===========================================================
 df_login = pd.read_csv("pj.csv")
 df_login["email"] = df_login["email"].str.strip().str.lower()
@@ -247,7 +257,7 @@ for desa, obj in st.session_state.fenomena_data.items():
 
 
 # ===========================================================
-#           DROPDOWN DESA — FORM INPUT FENOMENA
+#           DROPDOWN DESA — INPUT FENOMENA
 # ===========================================================
 st.subheader("Pilih Desa untuk Input Fenomena")
 
@@ -256,7 +266,7 @@ selected_desa = st.selectbox("Pilih Desa:", [""] + list(desa_list))
 
 
 # ===========================================================
-#                  TABEL (SELALU MUNCUL)
+#                     TABEL DATA
 # ===========================================================
 st.subheader("📁 Data Kecamatan")
 
@@ -277,10 +287,9 @@ st.dataframe(df_display.style.apply(highlight_rows, axis=1), use_container_width
 
 
 # ===========================================================
-#          FORM FENOMENA (HILANGKAN GRAFIK SAAT DIPILIH)
+#          FORM FENOMENA (PICTURE DISAPPEAR WHEN CLICK)
 # ===========================================================
 if selected_desa:
-
     st.markdown("---")
     st.subheader(f"Input Fenomena & Status: {selected_desa}")
 
@@ -294,7 +303,7 @@ if selected_desa:
     status_input = st.selectbox(
         "Pilih Status:",
         status_options,
-        index=status_options.index(status_lama) if status_lama in status_options else 0
+        index=status_options.index(status_lama) if status_lama in status_options else 0,
     )
 
     if st.button("💾 Simpan"):
