@@ -129,12 +129,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# LOGIN
+# 
 df_login = pd.read_csv("pj.csv")
 df_login['email'] = df_login['email'].str.strip().str.lower()
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.switch_page("login.py")
+    st.switch_page("pages/login.py")
 
 user_email = st.session_state.user_email.lower()
 user_row = df_login[df_login['email'] == user_email]
