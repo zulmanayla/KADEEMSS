@@ -4,7 +4,7 @@ import pandas as pd
 # ---- Load data ----
 @st.cache_data
 def load_data():
-    df = pd.read_csv("D:\\Naya Geming\\LOL\\pj.csv")
+    df = pd.read_csv("pj.csv")
     
     # Normalize email
     df['email'] = df['email'].astype(str).str.strip().str.lower()
@@ -50,3 +50,4 @@ if st.button("Login"):
 
 st.write("---")
 st.write("Pastikan email dan passcode sesuai data di *pj.csv*")
+
