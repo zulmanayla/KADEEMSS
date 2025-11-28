@@ -1,77 +1,143 @@
+# pages/dashboards kdm.py
 import streamlit as st
 import pandas as pd
 import gspread
 import json
 import io
+from typing import Dict, Any
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from google.auth.exceptions import RefreshError
+
+# -----------------------------
+# CONFIG
+# -----------------------------
+FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"  # folder tempat fenomena.json
+
+# -----------------------------
+# Helper: Credentials from st.secrets
+# -----------------------------
+def _get_secret_block() -> Dict[str, Any]:
+    """
+    Return the credentials block from streamlit secrets.
+    Must match the TOML key name (here: 'google_credentials').
+    """
+    # Use the lowercase key that matches the TOML example below
+    key_name = "google_credentials"
+    if key_name not in st.secrets:
+        raise KeyError(
+            f"Streamlit secret '{key_name}' not found. "
+            "Open Settings → Secrets and add the credentials block (see instructions)."
+        )
+    return st.secrets[key_name]
 
 
-# ===========================================================
-#                  FOLDER GOOGLE DRIVE
-# ===========================================================
-FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
-
-
-# ===========================================================
-#                GOOGLE CREDENTIALS & GSPREAD
-# ===========================================================
 def get_credentials(scopes):
-    # HARUS lowercase, sama seperti di secrets TOML
-    cred = st.secrets["google_credentials"]
+    """Create google Credentials object from secrets."""
+    creds_block = _get_secret_block()
 
-    service_account_info = {
-        "type": cred["type"],
-        "project_id": cred["project_id"],
-        "private_key_id": cred["private_key_id"],
-        "private_key": cred["private_key"],
-        "client_email": cred["client_email"],
-        "client_id": cred["client_id"],
-        "auth_uri": cred["auth_uri"],
-        "token_uri": cred["token_uri"],
-        "auth_provider_x509_cert_url": cred["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": cred["client_x509_cert_url"],
-        "universe_domain": cred["universe_domain"],
+    # Build a dict expected by from_service_account_info
+    info = {
+        "type": creds_block["type"],
+        "project_id": creds_block["project_id"],
+        "private_key_id": creds_block["private_key_id"],
+        "private_key": creds_block["private_key"],
+        "client_email": creds_block["client_email"],
+        "client_id": creds_block["client_id"],
+        "auth_uri": creds_block.get("auth_uri", "https://accounts.google.com/o/oauth2/auth"),
+        "token_uri": creds_block.get("token_uri", "https://oauth2.googleapis.com/token"),
+        "auth_provider_x509_cert_url": creds_block.get("auth_provider_x509_cert_url"),
+        "client_x509_cert_url": creds_block.get("client_x509_cert_url"),
     }
+    return Credentials.from_service_account_info(info, scopes=scopes)
 
-    return Credentials.from_service_account_info(service_account_info, scopes=scopes)
 
-
+# -----------------------------
+# Create gspread client (with retries)
+# -----------------------------
 def create_gspread_client():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
     creds = get_credentials(scopes)
-    return gspread.authorize(creds)
+    gc = gspread.authorize(creds)
+
+    # Add retry adapter to underlying session to be robust
+    retry = Retry(total=5, connect=5, read=5, backoff_factor=1)
+    adapter = HTTPAdapter(max_retries=retry)
+    gc.session.mount("https://", adapter)
+
+    return gc
 
 
-@st.cache_resource
-def load_sheet():
-    client = create_gspread_client()
-    sheet = client.open("PJ Kecamatan").worksheet("Sheet1")   # <-- PAKAI Sheet1 DEFAULT
-    return sheet
-
-
-# ===========================================================
-#                GOOGLE DRIVE API INIT
-# ===========================================================
+# -----------------------------
+# Drive init
+# -----------------------------
 def init_drive():
     scopes = ["https://www.googleapis.com/auth/drive"]
     creds = get_credentials(scopes)
     return build("drive", "v3", credentials=creds)
 
 
-# ===========================================================
-#            LOAD & SAVE fenomena.json di Google Drive
-# ===========================================================
-def get_file_id(name):
+# -----------------------------
+# Sheets loader with helpful errors
+# -----------------------------
+@st.cache_resource
+def load_sheet(spreadsheet_name: str = "PJ Kecamatan", worksheet_name: str = "Sheet1"):
+    """
+    Return a gspread worksheet object.
+    Raises with helpful Streamlit messages if credentials or permissions are wrong.
+    """
+    try:
+        client = create_gspread_client()
+        sheet = client.open(spreadsheet_name).worksheet(worksheet_name)
+        return sheet
+
+    except RefreshError as e:
+        # auth/credential failure
+        st.error("Autentikasi Google gagal. Periksa `secrets` dan format private_key.")
+        st.exception(e)
+        raise
+
+    except gspread.exceptions.SpreadsheetNotFound:
+        # permission or name problem
+        st.error(
+            f"Spreadsheet '{spreadsheet_name}' tidak ditemukan oleh service account.\n\n"
+            "Pastikan:\n"
+            "1) Nama spreadsheet persis sama (case-sensitive).\n"
+            "2) Service account (client_email) sudah di-share ke spreadsheet sebagai Editor.\n"
+            "3) Jika spreadsheet berada di folder khusus, pastikan service account juga punya akses."
+        )
+        # try listing spreadsheets to help debug
+        try:
+            client = create_gspread_client()
+            files = client.list_spreadsheet_files()
+            st.write("Daftar spreadsheet yang terlihat oleh service account (untuk debugging):")
+            for f in files:
+                st.write("- " + f.get("name", "<no-name>"))
+        except Exception:
+            st.write("Gagal menampilkan daftar spreadsheet (kemungkinan permission issue).")
+        raise
+
+    except Exception as e:
+        st.error("Gagal membuka Google Sheet. Lihat detail error di logs.")
+        st.exception(e)
+        raise
+
+
+# -----------------------------
+# Drive file helpers (fenomena.json)
+# -----------------------------
+def get_file_id(name: str):
     drive = init_drive()
     query = f"name='{name}' and '{FOLDER_ID}' in parents"
-    result = drive.files().list(q=query).execute()
-    files = result.get("files", [])
+    resp = drive.files().list(q=query).execute()
+    files = resp.get("files", [])
     return files[0]["id"] if files else None
 
 
@@ -93,7 +159,7 @@ def load_fenomena_json():
     return json.loads(fh.read().decode("utf-8"))
 
 
-def save_fenomena_json(data):
+def save_fenomena_json(data: dict):
     file_id = get_file_id("fenomena.json")
     drive = init_drive()
 
@@ -102,29 +168,19 @@ def save_fenomena_json(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
     media = MediaFileUpload(temp_path, mimetype="application/json")
-
     if file_id:
         drive.files().update(fileId=file_id, media_body=media).execute()
     else:
-        meta = {
-            "name": "fenomena.json",
-            "parents": [FOLDER_ID],
-            "mimeType": "application/json",
-        }
+        meta = {"name": "fenomena.json", "parents": [FOLDER_ID], "mimeType": "application/json"}
         drive.files().create(body=meta, media_body=media).execute()
 
 
-# ===========================================================
-#                 STREAMLIT CONFIG & HEADER
-# ===========================================================
-st.set_page_config(
-    page_title="Dashboard",
-    page_icon="https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75",
-    layout="wide",
-)
+# -----------------------------
+# STREAMLIT UI / MAIN
+# -----------------------------
+st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 
 logo_url = "https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75"
-
 st.markdown(
     f"""
     <style>
@@ -156,10 +212,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-# ===========================================================
-#                     LOGIN VALIDATION
-# ===========================================================
+# login check
 df_login = pd.read_csv("pj.csv")
 df_login["email"] = df_login["email"].str.strip().str.lower()
 
@@ -168,7 +221,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 
 user_email = st.session_state.user_email.lower()
 user_row = df_login[df_login["email"] == user_email]
-
 if user_row.empty:
     st.error("Akun tidak ada di data login.")
     st.stop()
@@ -176,26 +228,30 @@ if user_row.empty:
 user_kecamatan = user_row.iloc[0]["kecamatan"]
 nama_user = user_row.iloc[0]["nama_pegawai"]
 
-
-# ===========================================================
-#                    HEADER USER
-# ===========================================================
 st.title("📊 Dashboard Kecamatan")
 st.write(f"**Selamat Datang:** {nama_user}")
 st.write(f"**Anda bertugas di Kecamatan:** {user_kecamatan}")
 st.markdown("---")
 
+# -----------------------------
+# Load sheet (wrapped with helpful messaging)
+# -----------------------------
+try:
+    sheet = load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1")
+except Exception:
+    st.stop()  # load_sheet already showed message
+    raise
 
-# ===========================================================
-#               LOAD DATA DARI GOOGLE SHEETS
-# ===========================================================
-sheet = load_sheet()
 values = sheet.get("A1:Z")
+if not values or len(values) < 2:
+    st.error("Spreadsheet kosong atau range A1:Z tidak berisi header + data.")
+    st.stop()
 
 header = values[1]
 rows = values[2:]
 df = pd.DataFrame(rows, columns=header)
 
+# normalize kecamatan column
 df["Kecamatan"] = (
     df["Kecamatan"]
     .astype(str)
@@ -205,17 +261,12 @@ df["Kecamatan"] = (
 )
 
 filtered_df = df[df["Kecamatan"] == user_kecamatan.lower()].copy()
-
 if filtered_df.empty:
     st.warning("Tidak ada data untuk kecamatan Anda.")
     st.stop()
 
-
-# ===========================================================
-#                  KONVERSI PERSEN & KATEGORI
-# ===========================================================
+# percent conversion
 persen_col = "% KDM + SWmaps vs SE2016"
-
 filtered_df[persen_col] = (
     filtered_df[persen_col]
     .astype(str)
@@ -230,7 +281,6 @@ filtered_df["_nilai_num"] = (
     .astype(float)
 )
 
-
 def kategori(x):
     if x >= 100:
         return "Hijau"
@@ -239,15 +289,14 @@ def kategori(x):
     else:
         return "Merah"
 
-
 filtered_df["Kategori"] = filtered_df["_nilai_num"].apply(kategori)
 
-
-# ===========================================================
-#           LOAD FENOMENA DATA DARI GOOGLE DRIVE
-# ===========================================================
+# load fenomena data
 if "fenomena_data" not in st.session_state:
-    st.session_state.fenomena_data = load_fenomena_json()
+    try:
+        st.session_state.fenomena_data = load_fenomena_json()
+    except Exception:
+        st.session_state.fenomena_data = {}
 
 filtered_df["Fenomena"] = ""
 filtered_df["Status"] = ""
@@ -256,23 +305,14 @@ for desa, obj in st.session_state.fenomena_data.items():
     filtered_df.loc[filtered_df["Desa"] == desa, "Fenomena"] = obj.get("fenomena", "")
     filtered_df.loc[filtered_df["Desa"] == desa, "Status"] = obj.get("status", "")
 
-
-# ===========================================================
-#           DROPDOWN DESA — INPUT FENOMENA
-# ===========================================================
+# UI: desa select
 st.subheader("Pilih Desa untuk Input Fenomena")
-
 desa_list = filtered_df["Desa"].unique()
 selected_desa = st.selectbox("Pilih Desa:", [""] + list(desa_list))
 
-
-# ===========================================================
-#                     TABEL DATA
-# ===========================================================
+# show table
 st.subheader("📁 Data Kecamatan")
-
 df_display = filtered_df.drop(columns=["Kategori", "_nilai_num"], errors="ignore")
-
 
 def highlight_rows(row):
     kategori_val = filtered_df.loc[row.name, "Kategori"]
@@ -283,13 +323,9 @@ def highlight_rows(row):
     else:
         return ["background-color: #ffb3b3"] * len(row)
 
-
 st.dataframe(df_display.style.apply(highlight_rows, axis=1), use_container_width=True)
 
-
-# ===========================================================
-#          FORM FENOMENA (PICTURE DISAPPEAR WHEN CLICK)
-# ===========================================================
+# input form
 if selected_desa:
     st.markdown("---")
     st.subheader(f"Input Fenomena & Status: {selected_desa}")
@@ -298,9 +334,7 @@ if selected_desa:
     status_lama = st.session_state.fenomena_data.get(selected_desa, {}).get("status", "")
 
     fenomena_input = st.text_area("Tuliskan fenomena:", value=fenomena_lama)
-
     status_options = [" ", "Selesai", "Belum Selesai"]
-
     status_input = st.selectbox(
         "Pilih Status:",
         status_options,
@@ -312,17 +346,17 @@ if selected_desa:
             "fenomena": fenomena_input,
             "status": status_input,
         }
-        save_fenomena_json(st.session_state.fenomena_data)
-        st.success("Data berhasil disimpan!")
-        st.rerun()
+        try:
+            save_fenomena_json(st.session_state.fenomena_data)
+            st.success("Data berhasil disimpan!")
+            st.experimental_rerun()
+        except Exception as e:
+            st.error("Gagal menyimpan fenomena ke Google Drive. Periksa permission dan logs.")
+            st.exception(e)
 
     st.stop()
 
-
-# ===========================================================
-#                     GRAFIK BAR
-# ===========================================================
+# chart
 st.subheader("📈 Grafik Progres (%)")
-
 chart_df = filtered_df[["Desa", "_nilai_num"]].set_index("Desa")
 st.bar_chart(chart_df)
