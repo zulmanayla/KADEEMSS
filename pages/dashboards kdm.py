@@ -29,6 +29,12 @@ FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
 @st.cache_resource
 def load_sheet():
+    import json
+    from google.oauth2.service_account import Credentials
+    from gspread import Client
+    from gspread.authorize import Client as create_client
+
+    # Load credentials from Streamlit Secrets
     cred_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
 
     creds = Credentials.from_service_account_info(
@@ -42,6 +48,7 @@ def load_sheet():
     client = create_client(creds)
     sheet = client.open("PJ Kecamatan").worksheet("Sheet1")
     return sheet
+
 
 
 
