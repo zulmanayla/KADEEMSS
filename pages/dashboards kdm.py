@@ -35,10 +35,10 @@ def _get_secret_block() -> Dict[str, Any]:
         )
     return st.secrets[key_name]
 
-
 def get_credentials(scopes):
-    """Create google Credentials object from secrets."""
-    creds_block = _get_secret_block()
+    info = st.secrets["google_credentials"]
+    return Credentials.from_service_account_info(info, scopes=scopes)
+
 
     # Build a dict expected by from_service_account_info
     info = {
