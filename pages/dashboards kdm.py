@@ -19,8 +19,7 @@ FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 # Credentials
 # -----------------------------
 def get_credentials(scopes):
-    info = st.secrets["google_credentials"]
-    return Credentials.from_service_account_info(info, scopes=scopes)
+    return Credentials.from_service_account_info(st.secrets.google_credentials, scopes=scopes)
 
 def create_gspread_client():
     scopes = [
