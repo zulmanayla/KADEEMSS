@@ -1,7 +1,4 @@
-Here is your **fully corrected, clean, and working version** of the `pages/dashboards kdm.py` file that will work perfectly on **Streamlit Community Cloud** once you fix the secrets (I’ll also give you the exact secrets format at the end).
 
-```python
-# pages/dashboards kdm.py
 import streamlit as st
 import pandas as pd
 import gspread
