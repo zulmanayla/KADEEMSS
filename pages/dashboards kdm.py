@@ -15,15 +15,15 @@ from urllib3.util.retry import Retry
 # -----------------------------
 FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
+
+
 # -----------------------------
 # Credentials
 # -----------------------------
 def get_credentials(scopes):
-    info = st.secrets["google_credentials"]
-    # Convert multline private_key to valid JSON object
-    info_dict = {k: info[k] for k in info}
-    return Credentials.from_service_account_info(info_dict, scopes=scopes)
-    
+    creds_dict = st.secrets["google_credentials"]
+    return Credentials.from_service_account_info(creds_dict, scopes=scopes)
+
 def create_gspread_client():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
