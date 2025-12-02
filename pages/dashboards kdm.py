@@ -19,8 +19,11 @@ FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 # Credentials
 # -----------------------------
 def get_credentials(scopes):
-    return Credentials.from_service_account_info(st.secrets.google_credentials, scopes=scopes)
-
+    info = st.secrets["google_credentials"]
+    # Convert multline private_key to valid JSON object
+    info_dict = {k: info[k] for k in info}
+    return Credentials.from_service_account_info(info_dict, scopes=scopes)
+    
 def create_gspread_client():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
