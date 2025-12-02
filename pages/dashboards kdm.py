@@ -30,11 +30,9 @@ def create_gspread_client():
         "https://www.googleapis.com/auth/drive",
     ]
     creds = get_credentials(scopes)
-    gc = gspread.authorize(creds)
-    retry = Retry(total=5, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retry)
-    gc.session.mount("https://", adapter)
-    return gc
+    client = gspread.authorize(creds)
+    return client
+
 
 def init_drive():
     scopes = ["https://www.googleapis.com/auth/drive"]
