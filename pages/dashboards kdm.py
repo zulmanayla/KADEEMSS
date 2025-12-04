@@ -89,7 +89,7 @@ logo_url = "https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.p
 st.markdown(
     f"""
     <style>
-        [data-testid="stHeader"] {{ background: transparent !important; }}
+      
         [data-testid="stToolbar"]::before {{
             content: "";
             display: flex;
