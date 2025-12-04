@@ -173,9 +173,9 @@ def get_kategori(x):
 
 filtered_df["Kategori"] = filtered_df["_nilai"].apply(get_kategori)
 
-# Load fenomena
-if "fenomena_data" not in st.session_state:
-    st.session_state.fenomena_data = load_fenomena_json()
+# Load fenomena dari spreadsheet
+fenomena_df, _ = load_fenomena_sheet()
+
 
 filtered_df["Fenomena"] = filtered_df["Desa"].map(lambda x: st.session_state.fenomena_data.get(x, {}).get("fenomena", ""))
 filtered_df["Status"] = filtered_df["Desa"].map(lambda x: st.session_state.fenomena_data.get(x, {}).get("status", ""))
