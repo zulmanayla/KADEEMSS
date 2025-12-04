@@ -187,10 +187,12 @@ st.subheader("Pilih Desa")
 desa_list = [""] + sorted(filtered_df["Desa"].dropna().unique())
 selected_desa = st.selectbox("Desa:", desa_list)
 
-# Warna baris
 def color_row(row):
-    color = {"Hijau": "#d4edda", "Kuning": "#fff3cd", "Merah": "#f8d7da"}.get(row["Kategori"], "#ffffff")
+    # Ambil kategori berdasarkan index baris
+    kategori = filtered_df.loc[row.name, "Kategori"]
+    color = {"Hijau": "#d4edda", "Kuning": "#fff3cd", "Merah": "#f8d7da"}.get(kategori, "#ffffff")
     return [f"background-color: {color}"] * len(row)
+
 
 st.subheader("Data Kecamatan Anda")
 
