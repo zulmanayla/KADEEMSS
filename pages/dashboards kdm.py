@@ -210,7 +210,6 @@ if selected_desa:
     st.subheader(f"Fenomena - {selected_desa}")
 
     old_row = fenomena_df[fenomena_df["Desa"] == selected_desa]
-
     old_fenomena = old_row["Fenomena"].iloc[0] if not old_row.empty else ""
     old_status = old_row["Status"].iloc[0] if not old_row.empty else ""
 
@@ -220,19 +219,19 @@ if selected_desa:
     status = st.selectbox("Status:", status_options, index=status_index)
 
     if st.button("Simpan", type="primary"):
+        cell = fenomena_ws.find(selected_desa)
 
-    cell = fenomena_ws.find(selected_desa)
+        if cell:
+            fenomena_ws.update_cell(cell.row, 1, user_kecamatan)
+            fenomena_ws.update_cell(cell.row, 2, selected_desa)
+            fenomena_ws.update_cell(cell.row, 3, fenomena)
+            fenomena_ws.update_cell(cell.row, 4, status)
+        else:
+            fenomena_ws.append_row([user_kecamatan, selected_desa, fenomena, status])
 
-    if cell:
-        fenomena_ws.update_cell(cell.row, 1, user_kecamatan)
-        fenomena_ws.update_cell(cell.row, 2, selected_desa)
-        fenomena_ws.update_cell(cell.row, 3, fenomena)
-        fenomena_ws.update_cell(cell.row, 4, status)
-    else:
-        fenomena_ws.append_row([user_kecamatan, selected_desa, fenomena, status])
+        st.success("Data berhasil disimpan!")
+        st.rerun()
 
-    st.success("Data berhasil disimpan!")
-    st.rerun()
 
 # Grafik
 st.subheader("Grafik Progres")
