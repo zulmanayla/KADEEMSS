@@ -107,11 +107,12 @@ st.markdown(
             content: "BADAN PUSAT STATISTIK \\A KABUPATEN LAMONGAN";
             white-space: pre;
             position: absolute;
-            top: 13px;
+            top: 9px;
             left: 92px;
             font-size: 11px;
             font-weight: bold;
             font-style: italic;
+            line-height: 10px;
         }}
     </style>
     """,
