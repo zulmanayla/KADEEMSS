@@ -142,7 +142,8 @@ user_kecamatan = user_row.iloc[0]["kecamatan"]
 nama_user = user_row.iloc[0]["nama_pegawai"]
 
 st.title("📊 Dashboard Kecamatan - KDM")
-st.write(f"**Selamat datang, {nama_user}** | Kecamatan: **{user_kecamatan}**")
+st.write(f"**Selamat Datang:** {nama_user}")
+st.write(f"**Anda bertugas di Kecamatan:** {user_kecamatan}")
 st.markdown("---")
 
 # Load data
