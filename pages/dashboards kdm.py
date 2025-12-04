@@ -186,6 +186,10 @@ if "Kecamatan" in filtered_df.columns:
     filtered_df.drop(columns=["Kecamatan"], inplace=True)
 
 filtered_df.insert(0, "Kecamatan", user_kecamatan.title())
+for col in ["Fenomena", "Status"]:
+    filtered_df[col] = filtered_df[col].fillna("").replace("nan", "")
+st.experimental_rerun()
+
 
 # Dropdown desa
 st.subheader("Pilih Desa")
