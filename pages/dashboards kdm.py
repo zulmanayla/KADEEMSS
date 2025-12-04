@@ -15,8 +15,6 @@ from urllib3.util.retry import Retry
 # -----------------------------
 FOLDER_ID = "1mkUYxy16XNTmhV4uy-DXo5le6oMyvPHs"
 
-
-
 # -----------------------------
 # Credentials
 # -----------------------------
@@ -32,7 +30,6 @@ def create_gspread_client():
     creds = get_credentials(scopes)
     client = gspread.authorize(creds)
     return client
-
 
 def init_drive():
     scopes = ["https://www.googleapis.com/auth/drive"]
@@ -93,25 +90,40 @@ def save_fenomena_json(data):
 # -----------------------------
 st.set_page_config(page_title="Dashboard KDM", page_icon="📊", layout="wide")
 
-# Header logo
-st.markdown("""
-<style>
-[data-testid="stToolbar"]::before {
-    content: "";
-    position: absolute;
-    left: 50px; top: 10px;
-    width: 40px; height: 40px;
-    background: url('https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75') no-repeat center;
-    background-size: contain;
-}
-[data-testid="stToolbar"]::after {
-    content: "BADAN PUSAT STATISTIK KABUPATEN LAMONGAN";
-    position: absolute;
-    left: 100px; top: 20px;
-    font-size: 11px; font-weight: bold; font-style: italic;
-}
-</style>
-""", unsafe_allow_html=True)
+# BERSIHKAN HEADER
+logo_url = "https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75"
+st.markdown(
+    f"""
+    <style>
+        [data-testid="stHeader"] {{ background: transparent !important; }}
+        [data-testid="stToolbar"]::before {{
+            content: "";
+            display: flex;
+            position: absolute;
+            left: 50px;
+            top: 13px;
+            width: 240px;
+            height: 40px;
+            background-image: url('{logo_url}');
+            background-repeat: no-repeat;
+            background-size: 38px;
+            padding-left: 45px;
+        }}
+        [data-testid="stToolbar"]::after {{
+            content: "BADAN PUSAT STATISTIK \\A KABUPATEN LAMONGAN";
+            white-space: pre;
+            position: absolute;
+            top: 13px;
+            left: 92px;
+            font-size: 11px;
+            font-weight: bold;
+            font-style: italic;
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 # Login check
 df_login = pd.read_csv("pj.csv")
@@ -150,9 +162,12 @@ if filtered_df.empty:
     st.warning("Belum ada data untuk kecamatan Anda.")
     st.stop()
 
-# Proses persentase
+# Hitung kategori
 col = "% KDM + SWmaps vs SE2016"
-filtered_df["_nilai"] = pd.to_numeric(filtered_df[col].astype(str).str.replace("[%,]", "", regex=True).str.replace(",", "."), errors="coerce")
+filtered_df["_nilai"] = pd.to_numeric(
+    filtered_df[col].astype(str).str.replace("[%,]", "", regex=True).str.replace(",", "."),
+    errors="coerce"
+)
 
 def get_kategori(x):
     if pd.isna(x): return "Merah"
@@ -164,39 +179,42 @@ filtered_df["Kategori"] = filtered_df["_nilai"].apply(get_kategori)
 if "fenomena_data" not in st.session_state:
     st.session_state.fenomena_data = load_fenomena_json()
 
-# Apply existing fenomena
 filtered_df["Fenomena"] = filtered_df["Desa"].map(lambda x: st.session_state.fenomena_data.get(x, {}).get("fenomena", ""))
 filtered_df["Status"] = filtered_df["Desa"].map(lambda x: st.session_state.fenomena_data.get(x, {}).get("status", ""))
 
-# UI
+# UI desa
 st.subheader("Pilih Desa")
 desa_list = [""] + sorted(filtered_df["Desa"].dropna().unique())
 selected_desa = st.selectbox("Desa:", desa_list)
 
-# Table
+# Warna baris
 def color_row(row):
     color = {"Hijau": "#d4edda", "Kuning": "#fff3cd", "Merah": "#f8d7da"}.get(row["Kategori"], "#ffffff")
     return [f"background-color: {color}"] * len(row)
 
 st.subheader("Data Kecamatan Anda")
-st.dataframe(
-    filtered_df.drop(columns=["_nilai", "Kategori"], errors="ignore")
-    .style.apply(color_row, axis=1),
-    use_container_width=True
-)
-# Input form
+
+# -----------------------------
+# 🔥 BAGIAN YANG ANDA MINTA:
+# Sembunyikan kolom “Kategori”
+# -----------------------------
+table_df = filtered_df.drop(columns=["_nilai", "Kategori"], errors="ignore")
+
+st.dataframe(table_df.style.apply(color_row, axis=1), use_container_width=True)
+
+# Form input fenomena
 if selected_desa:
     st.markdown("---")
     st.subheader(f"Fenomena - {selected_desa}")
     old = st.session_state.fenomena_data.get(selected_desa, {})
-    
+
     fenomena = st.text_area("Fenomena:", value=old.get("fenomena", ""), height=120)
     status_options = [" ", "Belum Selesai", "Selesai"]
     current_status = old.get("status", " ")
     status_index = status_options.index(current_status) if current_status in status_options else 0
     status = st.selectbox("Status:", status_options, index=status_index)
 
-    if st.button("💾 Simpan ke Google Drive", type="primary"):
+    if st.button("Simpan", type="primary"):
         st.session_state.fenomena_data[selected_desa] = {
             "fenomena": fenomena.strip(),
             "status": status
