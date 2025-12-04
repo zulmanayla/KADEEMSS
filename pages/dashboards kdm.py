@@ -184,10 +184,6 @@ filtered_df = filtered_df.merge(
 # Tambahkan kembali kolom Kecamatan dari user, bukan dari fenomena_df
 filtered_df.insert(0, "Kecamatan", user_kecamatan.title())
 
-
-# Kolom Kecamatan di paling kiri
-filtered_df.insert(0, "Kecamatan", filtered_df["Kecamatan"].astype(str).str.title())
-
 # Dropdown desa
 st.subheader("Pilih Desa")
 desa_list = [""] + sorted(filtered_df["Desa"].dropna().unique())
