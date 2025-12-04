@@ -179,8 +179,11 @@ def color_row(row):
     return [f"background-color: {color}"] * len(row)
 
 st.subheader("Data Kecamatan Anda")
-st.dataframe(filtered_df.drop(columns=["_nilai"], errors="ignore").style.apply(color_row, axis=1), use_container_width=True)
-
+st.dataframe(
+    filtered_df.drop(columns=["_nilai", "Kategori"], errors="ignore")
+    .style.apply(color_row, axis=1),
+    use_container_width=True
+)
 # Input form
 if selected_desa:
     st.markdown("---")
