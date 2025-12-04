@@ -31,13 +31,8 @@ def create_gspread_client():
     client = gspread.authorize(creds)
     return client
 
-def init_drive():
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    creds = get_credentials(scopes)
-    return build("drive", "v3", credentials=creds)
-
 # -----------------------------
-# Load Sheet
+# Load Sheet PJ Kecamatan
 # -----------------------------
 @st.cache_resource(ttl=300)
 def load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1"):
@@ -50,44 +45,25 @@ def load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1"):
         st.stop()
 
 # -----------------------------
-# Fenomena Spreadsheet
+# Load Sheet Fenomena
 # -----------------------------
-FENOMENA_SPREADSHEET = "Fenomena"
-FENOMENA_SHEET = "Sheet1"
-
 def load_fenomena_sheet():
     try:
         client = create_gspread_client()
-        sheet = client.open(FENOMENA_SPREADSHEET).worksheet(FENOMENA_SHEET)
-        rows = sheet.get_all_records()
-        df = pd.DataFrame(rows)
-        return df, sheet
+        ws = client.open("Fenomena").sheet1
+        df = pd.DataFrame(ws.get_all_records())
+        return df, ws
     except Exception as e:
-        st.error("Gagal membuka spreadsheet fenomena. Pastikan sudah dibuat & dishare!")
+        st.error("Gagal memuat Sheet Fenomena. Pastikan nama spreadsheet = 'Fenomena'")
         st.exception(e)
-        return pd.DataFrame(columns=["Kecamatan", "Desa", "Fenomena", "Status"]), None
-
-def save_fenomena_sheet(kecamatan, desa, fenomena, status):
-    df, sheet = load_fenomena_sheet()
-    if sheet is None:
-        return
-
-    # Update jika desa sudah ada
-    existing = df[df["Desa"] == desa]
-
-    if not existing.empty:
-        row_index = existing.index[0] + 2   # header = row 1
-        sheet.update(f"A{row_index}:D{row_index}", [[kecamatan, desa, fenomena, status]])
-    else:
-        # Tambah baris baru: Kecamatan | Desa | Fenomena | Status
-        sheet.append_row([kecamatan, desa, fenomena, status])
+        st.stop()
 
 # -----------------------------
 # MAIN APP
 # -----------------------------
 st.set_page_config(page_title="Dashboard KDM", page_icon="📊", layout="wide")
 
-# BERSIHKAN HEADER
+# Header
 logo_url = "https://lamongankab.bps.go.id/_next/image?url=%2Fassets%2Flogo-bps.png&w=3840&q=75"
 st.markdown(
     f"""
@@ -121,8 +97,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-# Login check
+# Login
 df_login = pd.read_csv("pj.csv")
 df_login["email"] = df_login["email"].str.strip().str.lower()
 
@@ -143,7 +118,7 @@ st.write(f"**Selamat Datang:** {nama_user}")
 st.write(f"**Anda bertugas di Kecamatan:** {user_kecamatan}")
 st.markdown("---")
 
-# Load data
+# Load data PJ Kecamatan
 sheet = load_sheet()
 values = sheet.get("A1:Z")
 if len(values) < 2:
@@ -173,31 +148,34 @@ def get_kategori(x):
 
 filtered_df["Kategori"] = filtered_df["_nilai"].apply(get_kategori)
 
-# Load fenomena dari spreadsheet
-fenomena_df, _ = load_fenomena_sheet()
+# Load fenomena sheet
+fenomena_df, fenomena_ws = load_fenomena_sheet()
 
+# Gabungkan berdasarkan nama desa
+filtered_df = filtered_df.merge(
+    fenomena_df,
+    how="left",
+    left_on="Desa",
+    right_on="Desa"
+)
 
-filtered_df["Fenomena"] = filtered_df["Desa"].map(lambda x: st.session_state.fenomena_data.get(x, {}).get("fenomena", ""))
-filtered_df["Status"] = filtered_df["Desa"].map(lambda x: st.session_state.fenomena_data.get(x, {}).get("status", ""))
+# Kolom Kecamatan di paling kiri
+filtered_df.insert(0, "Kecamatan", filtered_df["Kecamatan"].str.title())
 
-# UI desa
+# Dropdown desa
 st.subheader("Pilih Desa")
 desa_list = [""] + sorted(filtered_df["Desa"].dropna().unique())
 selected_desa = st.selectbox("Desa:", desa_list)
 
+# Warna baris berdasarkan kategori
 def color_row(row):
-    # Ambil kategori berdasarkan index baris
     kategori = filtered_df.loc[row.name, "Kategori"]
     color = {"Hijau": "#d4edda", "Kuning": "#fff3cd", "Merah": "#f8d7da"}.get(kategori, "#ffffff")
     return [f"background-color: {color}"] * len(row)
 
-
 st.subheader("Data Kecamatan Anda")
 
-# -----------------------------
-# 🔥 BAGIAN YANG ANDA MINTA:
-# Sembunyikan kolom “Kategori”
-# -----------------------------
+# Tampilkan tabel (tanpa kolom kategori & nilai)
 table_df = filtered_df.drop(columns=["_nilai", "Kategori"], errors="ignore")
 
 st.dataframe(table_df.style.apply(color_row, axis=1), use_container_width=True)
@@ -206,28 +184,31 @@ st.dataframe(table_df.style.apply(color_row, axis=1), use_container_width=True)
 if selected_desa:
     st.markdown("---")
     st.subheader(f"Fenomena - {selected_desa}")
-    old = st.session_state.fenomena_data.get(selected_desa, {})
 
-    fenomena = st.text_area("Fenomena:", value=old.get("fenomena", ""), height=120)
+    old_row = fenomena_df[fenomena_df["Desa"] == selected_desa]
+
+    old_fenomena = old_row["Fenomena"].iloc[0] if not old_row.empty else ""
+    old_status = old_row["Status"].iloc[0] if not old_row.empty else ""
+
+    fenomena = st.text_area("Fenomena:", value=old_fenomena, height=120)
     status_options = [" ", "Belum Selesai", "Selesai"]
-    current_status = old.get("status", " ")
-    status_index = status_options.index(current_status) if current_status in status_options else 0
+    status_index = status_options.index(old_status) if old_status in status_options else 0
     status = st.selectbox("Status:", status_options, index=status_index)
 
     if st.button("Simpan", type="primary"):
-        st.session_state.fenomena_data[selected_desa] = {
-            "fenomena": fenomena.strip(),
-            "status": status
-        }
-        try:
-            save_fenomena_json(st.session_state.fenomena_data)
-            st.success("Berhasil disimpan!")
-            st.rerun()
-        except Exception as e:
-            st.error("Gagal menyimpan!")
-            st.exception(e)
 
-# Chart
+        # update baris bila sudah ada
+        cell = fenomena_ws.find(selected_desa)
+        if cell:
+            fenomena_ws.update_cell(cell.row, 2, fenomena)
+            fenomena_ws.update_cell(cell.row, 3, status)
+        else:
+            fenomena_ws.append_row([selected_desa, fenomena, status])
+
+        st.success("Berhasil disimpan!")
+        st.rerun()
+
+# Grafik
 st.subheader("Grafik Progres")
 chart_data = filtered_df.set_index("Desa")["_nilai"]
 st.bar_chart(chart_data)
