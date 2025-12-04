@@ -180,8 +180,10 @@ filtered_df = filtered_df.merge(
     how="left",
     on="Desa"
 )
-
 # Tambahkan kembali kolom Kecamatan dari user, bukan dari fenomena_df
+if "Kecamatan" in filtered_df.columns:
+    filtered_df.drop(columns=["Kecamatan"], inplace=True)
+
 filtered_df.insert(0, "Kecamatan", user_kecamatan.title())
 
 # Dropdown desa
