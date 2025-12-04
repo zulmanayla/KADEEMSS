@@ -35,7 +35,7 @@ def create_gspread_client():
 # Load Sheet PJ Kecamatan
 # -----------------------------
 @st.cache_resource(ttl=300)
-load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1")
+def load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1"):
     try:
         client = create_gspread_client()
         return client.open(spreadsheet_name).worksheet(worksheet_name)
@@ -43,6 +43,7 @@ load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1")
         st.error("Gagal membuka Google Sheet. Pastikan service account sudah di-share!")
         st.exception(e)
         st.stop()
+
 
 # -----------------------------
 # Load Sheet Fenomena
