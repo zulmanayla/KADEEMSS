@@ -140,7 +140,7 @@ st.markdown("---")
 
 # Load data PJ Kecamatan
 sheet = load_sheet()
-values = sheet.get("A1:Z")
+values = sheet.get_all_values()
 if len(values) < 2:
     st.error("Sheet kosong!")
     st.stop()
