@@ -51,13 +51,36 @@ def load_fenomena_sheet():
     try:
         client = create_gspread_client()
         ws = client.open("Fenomena").sheet1
-        df = pd.DataFrame(ws.get_all_records())
+
+        data = ws.get_all_records()
+        if not data:
+            # Sheet kosong → buat dataframe standar
+            df = pd.DataFrame(columns=["Kecamatan", "Desa", "Fenomena", "Status"])
+            return df, ws
+
+        df = pd.DataFrame(data)
+
+        # Pastikan kolom bersih
+        df.columns = df.columns.str.strip()
+
+        # Pastikan kolom yang dibutuhkan ada
+        required_cols = ["Kecamatan", "Desa", "Fenomena", "Status"]
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = ""
+
+        # Normalisasi teks
+        df["Desa"] = df["Desa"].astype(str).str.strip()
+        df["Kecamatan"] = df["Kecamatan"].astype(str).str.strip()
+        df["Fenomena"] = df["Fenomena"].astype(str).str.strip()
+        df["Status"] = df["Status"].astype(str).str.strip()
+
         return df, ws
+
     except Exception as e:
-        st.error("Gagal memuat Sheet Fenomena. Pastikan nama spreadsheet = 'Fenomena'")
+        st.error("Gagal memuat Sheet Fenomena. Pastikan spreadsheet bernama 'Fenomena'.")
         st.exception(e)
         st.stop()
-
 # -----------------------------
 # MAIN APP
 # -----------------------------
@@ -151,16 +174,19 @@ filtered_df["Kategori"] = filtered_df["_nilai"].apply(get_kategori)
 # Load fenomena sheet
 fenomena_df, fenomena_ws = load_fenomena_sheet()
 
-# Gabungkan berdasarkan nama desa
+# Normalisasi terlebih dahulu
+fenomena_df["Desa"] = fenomena_df["Desa"].astype(str).str.strip()
+filtered_df["Desa"] = filtered_df["Desa"].astype(str).str.strip()
+
 filtered_df = filtered_df.merge(
-    fenomena_df,
+    fenomena_df[["Kecamatan", "Desa", "Fenomena", "Status"]],
     how="left",
-    left_on="Desa",
-    right_on="Desa"
+    on="Desa"
 )
 
+
 # Kolom Kecamatan di paling kiri
-filtered_df.insert(0, "Kecamatan", filtered_df["Kecamatan"].str.title())
+filtered_df.insert(0, "Kecamatan", filtered_df["Kecamatan"].astype(str).str.title())
 
 # Dropdown desa
 st.subheader("Pilih Desa")
@@ -197,13 +223,15 @@ if selected_desa:
 
     if st.button("Simpan", type="primary"):
 
-        # update baris bila sudah ada
-        cell = fenomena_ws.find(selected_desa)
+       cell = fenomena_ws.find(selected_desa)
+
         if cell:
-            fenomena_ws.update_cell(cell.row, 2, fenomena)
-            fenomena_ws.update_cell(cell.row, 3, status)
+            fenomena_ws.update_cell(cell.row, 1, user_kecamatan)
+            fenomena_ws.update_cell(cell.row, 2, selected_desa)
+            fenomena_ws.update_cell(cell.row, 3, fenomena)
+            fenomena_ws.update_cell(cell.row, 4, status)
         else:
-            fenomena_ws.append_row([selected_desa, fenomena, status])
+            fenomena_ws.append_row([user_kecamatan, selected_desa, fenomena, status])
 
         st.success("Berhasil disimpan!")
         st.rerun()
