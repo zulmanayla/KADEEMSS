@@ -221,17 +221,19 @@ if selected_desa:
 
     if st.button("Simpan", type="primary"):
 
-      cell = fenomena_ws.find(selected_desa)
+    cell = fenomena_ws.find(selected_desa)
 
-      if cell:
+    if cell:
         fenomena_ws.update_cell(cell.row, 1, user_kecamatan)
         fenomena_ws.update_cell(cell.row, 2, selected_desa)
         fenomena_ws.update_cell(cell.row, 3, fenomena)
         fenomena_ws.update_cell(cell.row, 4, status)
-      else:
+    else:
         fenomena_ws.append_row([user_kecamatan, selected_desa, fenomena, status])
+
     st.success("Data berhasil disimpan!")
     st.rerun()
+
 # Grafik
 st.subheader("Grafik Progres")
 chart_data = filtered_df.set_index("Desa")["_nilai"]
