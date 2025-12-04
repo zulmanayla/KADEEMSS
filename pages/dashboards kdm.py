@@ -176,11 +176,13 @@ filtered_df["Desa"] = filtered_df["Desa"].astype(str).str.strip()
 fenomena_df["Desa"] = fenomena_df["Desa"].astype(str).str.strip()
 
 filtered_df = filtered_df.merge(
-    fenomena_df[["Kecamatan", "Desa", "Fenomena", "Status"]],
+    fenomena_df[["Desa", "Fenomena", "Status"]],
     how="left",
     on="Desa"
 )
 
+# Tambahkan kembali kolom Kecamatan dari user, bukan dari fenomena_df
+filtered_df.insert(0, "Kecamatan", user_kecamatan.title())
 
 
 # Kolom Kecamatan di paling kiri
