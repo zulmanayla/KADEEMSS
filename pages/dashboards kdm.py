@@ -35,7 +35,7 @@ def create_gspread_client():
 # Load Sheet PJ Kecamatan
 # -----------------------------
 @st.cache_resource(ttl=300)
-def load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1"):
+load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1")
     try:
         client = create_gspread_client()
         return client.open(spreadsheet_name).worksheet(worksheet_name)
