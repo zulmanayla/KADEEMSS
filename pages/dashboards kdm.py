@@ -50,40 +50,37 @@ def load_sheet(spreadsheet_name="PJ Kecamatan", worksheet_name="Sheet1"):
         st.stop()
 
 # -----------------------------
-# Fenomena.json
+# Fenomena Spreadsheet
 # -----------------------------
-def get_file_id(name):
-    drive = init_drive()
-    query = f"name='{name}' and '{FOLDER_ID}' in parents and trashed=false"
-    resp = drive.files().list(q=query, fields="files(id)").execute()
-    files = resp.get("files", [])
-    return files[0]["id"] if files else None
+FENOMENA_SPREADSHEET = "Fenomena"
+FENOMENA_SHEET = "Sheet1"
 
-def load_fenomena_json():
-    file_id = get_file_id("fenomena.json")
-    if not file_id:
-        return {}
-    drive = init_drive()
-    request = drive.files().get_media(fileId=file_id)
-    fh = io.BytesIO()
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    fh.seek(0)
-    return json.loads(fh.read().decode("utf-8"))
+def load_fenomena_sheet():
+    try:
+        client = create_gspread_client()
+        sheet = client.open(FENOMENA_SPREADSHEET).worksheet(FENOMENA_SHEET)
+        rows = sheet.get_all_records()
+        df = pd.DataFrame(rows)
+        return df, sheet
+    except Exception as e:
+        st.error("Gagal membuka spreadsheet fenomena. Pastikan sudah dibuat & dishare!")
+        st.exception(e)
+        return pd.DataFrame(columns=["Kecamatan", "Desa", "Fenomena", "Status"]), None
 
-def save_fenomena_json(data):
-    drive = init_drive()
-    file_id = get_file_id("fenomena.json")
-    temp_file = "temp_fenomena.json"
-    with open(temp_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    media = MediaFileUpload(temp_file, mimetype="application/json")
-    if file_id:
-        drive.files().update(fileId=file_id, media_body=media).execute()
+def save_fenomena_sheet(kecamatan, desa, fenomena, status):
+    df, sheet = load_fenomena_sheet()
+    if sheet is None:
+        return
+
+    # Update jika desa sudah ada
+    existing = df[df["Desa"] == desa]
+
+    if not existing.empty:
+        row_index = existing.index[0] + 2   # header = row 1
+        sheet.update(f"A{row_index}:D{row_index}", [[kecamatan, desa, fenomena, status]])
     else:
-        drive.files().create(body={"name": "fenomena.json", "parents": [FOLDER_ID]}, media_body=media).execute()
+        # Tambah baris baru: Kecamatan | Desa | Fenomena | Status
+        sheet.append_row([kecamatan, desa, fenomena, status])
 
 # -----------------------------
 # MAIN APP
