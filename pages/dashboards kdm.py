@@ -222,9 +222,14 @@ if selected_desa:
     # Ambil semua nilai status unik dari sheet
     raw_status_options = sorted(fenomena_df["Status"].dropna().unique())
     # Tambahkan opsi kosong
-    status_options = [" "] + raw_status_options
+    # Daftar status baku
+    status_options = [" ", "Belum Selesai", "Selesai"]
+    
+    # Sesuaikan index jika data lama ada
     status_index = status_options.index(old_status) if old_status in status_options else 0
+    
     status = st.selectbox("Status:", status_options, index=status_index)
+
 
 
     if st.button("Simpan", type="primary"):
