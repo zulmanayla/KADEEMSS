@@ -221,13 +221,9 @@ if selected_desa:
     fenomena = st.text_area("Fenomena:", value=old_fenomena, height=120)
     # Ambil semua nilai status unik dari sheet
     raw_status_options = sorted(fenomena_df["Status"].dropna().unique())
-    # Tambahkan opsi kosong
-    # Daftar status baku
+    fenomena = st.text_area("Fenomena:", value=old_fenomena, height=120)
     status_options = [" ", "Belum Selesai", "Selesai"]
-    
-    # Sesuaikan index jika data lama ada
     status_index = status_options.index(old_status) if old_status in status_options else 0
-    
     status = st.selectbox("Status:", status_options, index=status_index)
 
 
