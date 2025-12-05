@@ -219,14 +219,9 @@ if selected_desa:
     old_status = old_row["Status"].iloc[0] if not old_row.empty else ""
 
     fenomena = st.text_area("Fenomena:", value=old_fenomena, height=120)
-    # Ambil semua nilai status unik dari sheet
-    raw_status_options = sorted(fenomena_df["Status"].dropna().unique())
-    fenomena = st.text_area("Fenomena:", value=old_fenomena, height=120)
     status_options = [" ", "Belum Selesai", "Selesai"]
     status_index = status_options.index(old_status) if old_status in status_options else 0
     status = st.selectbox("Status:", status_options, index=status_index)
-
-
 
     if st.button("Simpan", type="primary"):
         cell = fenomena_ws.find(selected_desa)
