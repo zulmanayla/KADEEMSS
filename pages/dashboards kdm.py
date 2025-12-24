@@ -195,20 +195,6 @@ for col in ["Fenomena", "Status"]:
 st.subheader("Pilih Desa")
 desa_list = [""] + sorted(filtered_df["Desa"].dropna().unique())
 selected_desa = st.selectbox("Desa:", desa_list)
-
-# Warna baris berdasarkan kategori
-def color_row(row):
-    kategori = filtered_df.loc[row.name, "Kategori"]
-    color = {"Hijau": "#d4edda", "Kuning": "#fff3cd", "Merah": "#f8d7da"}.get(kategori, "#ffffff")
-    return [f"background-color: {color}"] * len(row)
-
-st.subheader("Data Kecamatan Anda")
-
-# Tampilkan tabel (tanpa kolom kategori & nilai)
-table_df = filtered_df.drop(columns=["_nilai", "Kategori"], errors="ignore")
-
-st.dataframe(table_df.style.apply(color_row, axis=1), use_container_width=True)
-
 # Form input fenomena
 if selected_desa:
     st.markdown("---")
@@ -236,6 +222,21 @@ if selected_desa:
 
         st.success("Data berhasil disimpan!")
         st.rerun()
+
+
+# Warna baris berdasarkan kategori
+def color_row(row):
+    kategori = filtered_df.loc[row.name, "Kategori"]
+    color = {"Hijau": "#d4edda", "Kuning": "#fff3cd", "Merah": "#f8d7da"}.get(kategori, "#ffffff")
+    return [f"background-color: {color}"] * len(row)
+
+st.subheader("Data Kecamatan Anda")
+
+# Tampilkan tabel (tanpa kolom kategori & nilai)
+table_df = filtered_df.drop(columns=["_nilai", "Kategori"], errors="ignore")
+
+st.dataframe(table_df.style.apply(color_row, axis=1), use_container_width=True)
+
 
 
 # Grafik
